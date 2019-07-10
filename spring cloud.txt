@@ -1,0 +1,122 @@
+Eureka注册中心
+Eureka：就是服务注册中心（可以是一个集群），对外暴露自己的地址
+生产者：启动后向Eureka注册自己信息（地址，提供什么服务）
+消费者：向Eureka订阅服务，Eureka会将对应服务的所有提供者地址列表发送给消费者，并且定期更新
+心跳(续约)：生产者定期通过http方式向Eureka刷新自己的状态
+
+Eureka详解
+
+服务注册中心
+
+Eureka的服务端应用，提供服务注册和发现功能，就是刚刚我们建立的eureka-server
+
+服务提供者
+
+提供服务的应用，可以是SpringBoot应用，也可以是其它任意技术实现，只要对外提供的是Rest风格服务即可。本例中就是我们实现的eureka-client
+
+服务消费者
+
+消费应用从注册中心获取服务列表，从而得知每个服务方的信息，知道去哪里调用服务方。本例中就是我们实现的consumer-server
+
+Spring Cloud有两种服务调用方式，一种是Ribbon+RestTemplate，另一种是Feign
+
+Ribbon是一个客户端负载均衡器，它可以很好地控制HTTP和TCP客户端的行为
+
+Spring Cloud Netflix默认情况下为Ribbon（BeanType beanName：ClassName）
+提供以下bean：
+IClientConfig ribbonClientConfig：DefaultClientConfigImpl
+IClientConfig：Ribbon的客户端配置，主要的作用就是装载配置信息，用于初始化客户端和负载均衡器。默认的实现方式是DefaultClientConfigImpl
+IRule ribbonRule：ZoneAvoidanceRule
+IRule：默认采用ZoneAvoidanceRule实现，该策略能够在多区域环境下选出最佳区域的实例。
+IPing ribbonPing：NoOpPing
+IPing：默认采用DummyPing实现，该检查策略是一个特殊的实现，实际上并不会检查实例是否可用，而是始终返回true,默认认为所有实例都可用。
+ServerList ribbonServerList：ConfigurationBasedServerList
+ServerList: 服务实例清单的维护机制，默认采用ConfigurationBasedServerList实现。
+ServerListFilter ribbonServerListFilter：ZonePreferenceServerListFilter
+ServerlistFilter: 服务实例清单过滤机制，默认采用ZonePreferenceServerListFilter，该策略能够优先过滤出于请求方处于同区域的服务实例。
+ILoadBalancer ribbonLoadBalancer：ZoneAwareLoadBalancer
+ILoadBalancer:负载均衡器，默认采用ZoneAwareLoadBalancer，它具备区域感知的能力
+
+
+Ribbon可以在通过客户端中配置的ribbonServerList服务端列表去轮询访问以达到均衡负载的作用。
+当Ribbon与Eureka联合使用时，ribbonServerList会被DiscoveryEnabledNIWSServerList重写，
+扩展成从Eureka注册中心中获取服务端列表。同时它也会用NIWSDiscoveryPing来取代IPing，它将职责委托给Eureka来确定服务端是否已经启动。
+
+
+Feign简介
+Feign是一个声明式的Web服务客户端。这使得Web服务客户端的写入更加方便 要使用Feign创建一个界面并对其进行注释。
+它具有可插入注释支持，包括Feign注释和JAX-RS注释。Feign还支持可插拔编码器和解码器。Spring Cloud增加了对Spring MVC注释的支持，并使用Spring Web中默认使用的HttpMessageConverters。
+Spring Cloud集成Ribbon和Eureka以在使用Feign时提供负载均衡的http客户端。
+
+Feign能做什么?
+Feign能使我们远程调用服务客户端变得更加容易,不再使用Ribbon+RestTemplate模板式的调用,在一套系统中, 不止一个接口需要调用,往往遇到这样的情况总合有方法解决那就是Feign,Fegin进行了封装,
+由他来帮助我们定义和实现依赖服务接口的定义.在Feign的实现下,我们只需要创建一个接口并使用注解的方式来配置它(以前是Dao接口上标注Mapper注解,现在是一个微服务接口上面标注一个Feign注解即可)
+,即可完成对服务提供方的接口绑定,简化了使用Spring cloud Ribbon时,自动封装服务调用客户端的开发量
+
+建议使用Feign 因为本身就包含Ribbon,数据的丢失率很低
+
+路由器和过滤器Zuul
+Zuul是Netflix开源的微服务网关，他可以和Eureka,Ribbon,Hystrix等组件配合使用
+Nginx大家都知道是反向代理服务器,可以做到负载均衡,过滤等功能,其实网关Zuul和它是一样的,比如你的eureka-client服务部署在很多服务器上,
+前端需要联调,难道都要记住这么多IP和接口,不可能记住的,这个时候就需要网关进行暴露统一接口进行转发请求不同的服务器上,一方面是安全另一方面负载均衡
+
+Zuul能做什么
+认证
+洞察
+压力测试
+金丝雀测试
+动态路由
+服务迁移
+负载脱落
+安全
+静态响应处理
+主动/主动流量管理
+
+Zuul的规则引擎允许通过任何JVM语言来编写规则和过滤器, 支持基于Java和Groovy的构建。 配置属性 zuul.max.host.connections 已经被两个新的配置属性替代, 
+zuul.host.maxTotalConnections （总连接数）和 zuul.host.maxPerRouteConnections,（每个路由连接数） 默认值分别是200和20.
+
+
+Spring Cloud Gateway 是 Spring Cloud 的一个全新项目，该项目是基于 Spring 5.0，Spring Boot 2.0 和 Project Reactor 等技术开发的网关，
+它旨在为微服务架构提供一种简单有效的统一的 API 路由管理方式
+Spring Cloud Gateway 作为 Spring Cloud 生态系统中的网关，目标是替代 Netflix Zuul，其不仅提供统一的路由方式，
+并且基于 Filter 链的方式提供了网关基本的功能，例如：安全，监控/指标，和限流
+Spring Cloud Gateway功能:
+基于Spring Framework 5，Project Reactor和Spring Boot 2.0构建
+能够匹配任何请求属性上的路由。
+谓词和过滤器特定于路线。
+Hystrix断路器集成。
+Spring Cloud DiscoveryClient集成
+易于编写谓词和过滤器
+请求率限制
+路径重写
+
+Gateway相关概念
+路由：路由网关的基本构建块。它由ID，目标URI，谓词集合和过滤器集合定义。如果聚合谓词为真，则匹配路由。
+谓词：这是一个Java 8函数谓词。输入类型是Spring FrameworkServerWebExchange。这允许开发人员匹配来自HTTP请求的任何内容，例如标头或参数。
+过滤器：这些是使用特定工厂构建的Spring FrameworkGatewayFilter实例。这里，可以在发送下游请求之前或之后修改请求和响应
+
+工作流程
+客户端向Spring Cloud Gateway发出请求。
+如果网关处理程序映射确定请求与路由匹配，则将其发送到网关Web处理程序。
+此处理程序运行通过特定于请求的过滤器链发送请求。
+滤波器被虚线划分的原因是滤波器可以在发送代理请求之前或之后执行逻辑。
+执行所有“预”过滤器逻辑，然后进行代理请求。在发出代理请求之后，执行“post”过滤器逻辑。
+
+分布式配置中心
+Spring Cloud Config为分布式系统中的外部化配置提供服务器端和客户端支持。在分布式系统中，由于服务数量很多，为了方便服务配置文件统一管理，
+实时更新，所以需要分布式配置中心组件。在Spring Cloud中，有分布式配置中心组件spring cloud config ，它支持配置服务放在配置服务的内存中（即本地），
+也支持放在远程Git仓库中同时也可以存放在Mysql数据库。在spring cloud config 组件中，分两个角色，一是config server，二是config client
+
+Spring Cloud Config为分布式系统中的外部化配置提供服务器和客户端支持。使用Config Server，您可以在所有环境中管理应用程序的外部属性。
+客户端和服务器上的概念映射与Spring Environment和PropertySource抽象，因此它们非常适合Spring应用程序，但可以与任何语言运行的任何应用程序一起使用。
+当应用程序通过部署管道从开发到测试并进入生产时，您可以管理这些环境之间的配置，并确保应用程序具有迁移时需要运行的所有内容。
+服务器存储后端的默认实现使用git，因此它可以轻松支持配置环境的标签版本，以及可用于管理内容的各种工具。添加替代实现并使用Spring配置插入它们很容易。
+
+
+Spring Cloud Config Server功能：
+
+用于外部配置的HTTP，基于资源的API（名称 - 值对或等效的YAML内容）
+加密和解密属性值（对称或非对称）
+使用可轻松嵌入Spring Boot应用程序 @EnableConfigServer Config Client功能（适用于Spring应用程序）：
+绑定到Config Server并Environment使用远程属性源初始化Spring
+加密和解密属性值（对称或非对称）
